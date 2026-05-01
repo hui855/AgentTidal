@@ -1,2 +1,0 @@
-{"instruction": "你了解Python吗？", "output": "当然！Python是一门非常流行的编程语言，广泛应用于Web开发、数据科学和AI领域。", "system": ""}
-{"instruction": "我正在学习FastAPI", "output": "FastAPI是个很好的选择！它性能出色，自动生成API文档，而且基于Python类型提示，开发体验非常好。", "system": "这是与用户对话的上下文参考：用户: 你了解Python吗？ 助手: 当然！Python是一门非常流行的编程语言，广泛应用于Web开发、数据科学和AI领域。"}

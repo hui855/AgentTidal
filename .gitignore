@@ -1,0 +1,23 @@
+# Byte-compiled
+__pycache__/
+*.pyc
+
+# Memory data (contains conversation data)
+memory/
+
+# Claude Code local settings
+.claude/
+
+# VS Code local settings
+.vscode/
+
+# Environment
+.env
+.env.local
+
+# Model downloads
+models/
+
+# OS junk
+Thumbs.db
+.DS_Store

@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AgentTidal Dashboard</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #0f1117;
+  --surface: #1a1d28;
+  --surface2: #242838;
+  --border: #2e3348;
+  --text: #e4e6f0;
+  --text2: #9498b0;
+  --accent: #6c8cff;
+  --accent2: #4a6cf7;
+  --green: #34d399;
+  --yellow: #fbbf24;
+  --red: #f87171;
+  --radius: 10px;
+}
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+  background: var(--bg); color: var(--text);
+  display: flex; min-height: 100vh;
+}
+.sidebar {
+  width: 220px; background: var(--surface); padding: 24px 0;
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; flex-shrink: 0;
+}
+.sidebar h1 {
+  font-size: 18px; font-weight: 700; padding: 0 20px 24px;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.nav-item {
+  display: flex; align-items: center; gap: 10px; padding: 12px 20px;
+  color: var(--text2); text-decoration: none; font-size: 14px; cursor: pointer;
+  border-left: 3px solid transparent; transition: all 0.15s;
+}
+.nav-item:hover { background: var(--surface2); color: var(--text); }
+.nav-item.active { background: var(--surface2); color: var(--accent); border-left-color: var(--accent); }
+.nav-icon { width: 18px; text-align: center; }
+.sidebar-footer { margin-top: auto; padding: 16px 20px; font-size: 11px; color: var(--text2); border-top: 1px solid var(--border); }
+.sidebar-footer .lang-toggle {
+  display: flex; align-items: center; gap: 6px; cursor: pointer; padding: 4px 0;
+  font-size: 12px; color: var(--text2); transition: color 0.15s;
+}
+.sidebar-footer .lang-toggle:hover { color: var(--accent); }
+.main { flex: 1; padding: 28px 36px; overflow-y: auto; max-height: 100vh; }
+.page { display: none; }
+.page.active { display: block; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 16px; }
+.card h2 { font-size: 15px; font-weight: 600; margin-bottom: 16px; }
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 20px; }
+.stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; }
+.stat-value { font-size: 28px; font-weight: 700; }
+.stat-label { font-size: 12px; color: var(--text2); margin-top: 4px; }
+.stat-sub { font-size: 11px; color: var(--text2); margin-top: 8px; }
+.status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+.status-dot.on { background: var(--green); box-shadow: 0 0 6px var(--green); }
+.status-dot.off { background: var(--red); box-shadow: 0 0 6px var(--red); }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border); }
+th { color: var(--text2); font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
+tr:hover td { background: var(--surface2); }
+.btn {
+  display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px;
+  border-radius: 6px; font-size: 13px; font-weight: 500; border: none; cursor: pointer;
+  transition: all 0.15s;
+}
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { background: var(--accent2); }
+.btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+.btn-secondary:hover { background: var(--border); }
+.btn-sm { padding: 5px 10px; font-size: 12px; }
+.btn-group { display: flex; gap: 8px; flex-wrap: wrap; }
+.form-group { margin-bottom: 14px; }
+.form-group label { display: block; font-size: 12px; color: var(--text2); margin-bottom: 4px; }
+.form-group input, .form-group select {
+  width: 100%; padding: 8px 12px; border-radius: 6px;
+  background: var(--surface2); color: var(--text);
+  border: 1px solid var(--border); font-size: 13px;
+}
+.conv-message { padding: 10px 14px; margin-bottom: 6px; border-radius: 6px; font-size: 13px; line-height: 1.5; }
+.conv-message.user { background: rgba(108,140,255,0.1); border-left: 3px solid var(--accent); }
+.conv-message.assistant { background: rgba(52,211,153,0.08); border-left: 3px solid var(--green); }
+.conv-message .role { font-size: 11px; font-weight: 600; margin-bottom: 4px; }
+.conv-message.user .role { color: var(--accent); }
+.conv-message.assistant .role { color: var(--green); }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 500; }
+.badge.success { background: rgba(52,211,153,0.15); color: var(--green); }
+.badge.warning { background: rgba(251,191,36,0.15); color: var(--yellow); }
+.badge.error { background: rgba(248,113,113,0.15); color: var(--red); }
+.badge.info { background: rgba(96,165,250,0.15); color: var(--blue); }
+.empty { text-align: center; padding: 40px; color: var(--text2); font-size: 14px; }
+.toast {
+  position: fixed; bottom: 24px; right: 24px; padding: 12px 20px;
+  border-radius: 8px; font-size: 13px; background: var(--surface);
+  border: 1px solid var(--border); box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  transform: translateY(80px); opacity: 0; transition: all 0.3s;
+  pointer-events: none; z-index: 999;
+}
+.toast.show { transform: translateY(0); opacity: 1; }
+.toast.success { border-color: var(--green); }
+.toast.error { border-color: var(--red); }
+.chart-placeholder { height: 120px; display: flex; align-items: flex-end; gap: 4px; padding: 10px 0; }
+.chart-bar {
+  flex: 1; background: linear-gradient(to top, var(--accent), var(--accent2));
+  border-radius: 4px 4px 0 0; min-height: 4px; transition: height 0.3s;
+}
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+@media (max-width: 700px) {
+  .sidebar { width: 56px; }
+  .sidebar h1, .sidebar .nav-label, .sidebar-footer { display: none; }
+  .sidebar .nav-item { justify-content: center; padding: 12px; }
+  .main { padding: 16px; }
+}
+</style>
+</head>
+<body>
+
+<nav class="sidebar">
+  <h1>AgentTidal</h1>
+  <div class="nav-item active" data-page="overview" onclick="showPage('overview')">
+    <span class="nav-icon">&#9679;</span><span class="nav-label" data-i18n="nav.overview">Overview</span>
+  </div>
+  <div class="nav-item" data-page="conversations" onclick="showPage('conversations')">
+    <span class="nav-icon">&#9776;</span><span class="nav-label" data-i18n="nav.conversations">Conversations</span>
+  </div>
+  <div class="nav-item" data-page="training" onclick="showPage('training')">
+    <span class="nav-icon">&#9654;</span><span class="nav-label" data-i18n="nav.training">Training</span>
+  </div>
+  <div class="nav-item" data-page="facts" onclick="showPage('facts')">
+    <span class="nav-icon">&#9881;</span><span class="nav-label" data-i18n="nav.knowledge">Knowledge</span>
+  </div>
+  <div class="nav-item" data-page="settings" onclick="showPage('settings')">
+    <span class="nav-icon">&#9878;</span><span class="nav-label" data-i18n="nav.settings">Settings</span>
+  </div>
+  <div class="sidebar-footer">
+    AgentTidal v0.1
+    <div class="lang-toggle" onclick="toggleLang()">
+      <span id="lang-indicator">&#127760;</span>
+      <span id="lang-label">中文</span>
+    </div>
+  </div>
+</nav>
+
+<main class="main">
+
+<!-- Overview -->
+<div class="page active" id="page-overview">
+  <h2 style="margin-bottom:20px;font-size:22px;" data-i18n="overview.title">Dashboard</h2>
+  <div class="stats-grid" id="stats-grid">
+    <div class="stat-card">
+      <div class="stat-value" id="proxy-status"><span class="status-dot off"></span>--</div>
+      <div class="stat-label" data-i18n="overview.proxyStatus">Proxy Status</div>
+      <div class="stat-sub">Port 1235</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="today-convs">--</div>
+      <div class="stat-label" data-i18n="overview.todayConvs">Today Conversations</div>
+      <div class="stat-sub" id="today-entries"></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="total-adapters">--</div>
+      <div class="stat-label" data-i18n="overview.trainedAdapters">Trained Adapters</div>
+      <div class="stat-sub" id="total-convs"></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="total-facts">--</div>
+      <div class="stat-label" data-i18n="overview.knowledgeFacts">Knowledge Facts</div>
+      <div class="stat-sub" id="disk-usage"></div>
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+    <div class="card"><h2 data-i18n="overview.latestTraining">Latest Training</h2><div id="recent-training"><div class="empty" data-i18n="overview.noTraining">No training yet</div></div></div>
+    <div class="card"><h2 data-i18n="overview.trainingHistory">Training History</h2><div id="chart-container"><div class="empty" data-i18n="overview.noData">No data yet</div></div></div>
+  </div>
+  <div class="card" style="margin-top:16px;">
+    <h2 data-i18n="overview.scheduleLog">Schedule Log</h2>
+    <div style="max-height:300px;overflow-y:auto;">
+      <table><thead><tr><th data-i18n="table.date">Date</th><th data-i18n="table.action">Action</th><th data-i18n="table.status">Status</th><th data-i18n="table.message">Message</th></tr></thead>
+        <tbody id="log-table"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Conversations -->
+<div class="page" id="page-conversations">
+  <h2 style="margin-bottom:20px;font-size:22px;" data-i18n="conv.title">Conversations</h2>
+  <div style="display:grid;grid-template-columns:220px 1fr;gap:16px;">
+    <div class="card"><h2 data-i18n="conv.dates">Dates</h2><div id="conv-dates-list"><div class="empty" data-i18n="common.loading">Loading...</div></div></div>
+    <div>
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+          <h2 style="margin-bottom:0;" id="conv-viewer-title" data-i18n="conv.selectDate">Select a date</h2>
+          <div class="btn-group">
+            <button class="btn btn-sm btn-secondary" data-i18n="[value]conv.raw" onclick="showConvView('raw')">Raw</button>
+            <button class="btn btn-sm btn-primary" data-i18n="[value]conv.dataset" onclick="showConvView('dataset')">Dataset</button>
+          </div>
+        </div>
+        <div id="conv-viewer"><div class="empty" data-i18n="conv.selectDateHint">Select a date from the left</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Training -->
+<div class="page" id="page-training">
+  <h2 style="margin-bottom:20px;font-size:22px;" data-i18n="training.title">Training</h2>
+  <div class="btn-group" style="margin-bottom:16px;">
+    <button class="btn btn-primary" onclick="triggerNightly()" data-i18n="training.runNow">Run Nightly Now</button>
+    <button class="btn btn-secondary" onclick="triggerDryRun()" data-i18n="training.dryRun">Dry Run</button>
+  </div>
+  <div class="card">
+    <h2 data-i18n="training.adapterHistory">Adapter History</h2>
+    <table><thead><tr><th data-i18n="table.date">Date</th><th data-i18n="table.model">Model</th><th data-i18n="table.samples">Samples</th><th data-i18n="table.duration">Duration</th><th data-i18n="table.status">Status</th></tr></thead>
+      <tbody id="adapter-table"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Facts -->
+<div class="page" id="page-facts">
+  <h2 style="margin-bottom:20px;font-size:22px;" data-i18n="facts.title">Knowledge Facts</h2>
+  <div class="card">
+    <h2 data-i18n="facts.extracted">Extracted Facts</h2>
+    <table><thead><tr><th data-i18n="facts.category">Category</th><th data-i18n="facts.key">Key</th><th data-i18n="facts.value">Value</th><th data-i18n="facts.confidence">Confidence</th><th data-i18n="facts.updated">Updated</th></tr></thead>
+      <tbody id="facts-table"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Settings -->
+<div class="page" id="page-settings">
+  <h2 style="margin-bottom:20px;font-size:22px;" data-i18n="settings.title">Settings</h2>
+  <div class="card">
+    <h2 data-i18n="settings.model">Model</h2>
+    <div class="form-group"><label data-i18n="settings.baseModel">Base Model</label><input type="text" id="cfg-model-base"></div>
+    <div class="form-group"><label data-i18n="settings.maxSeq">Max Sequence Length</label><input type="number" id="cfg-model-seq"></div>
+  </div>
+  <div class="card">
+    <h2 data-i18n="settings.training">Training</h2>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div class="form-group"><label data-i18n="settings.loraRank">LoRA Rank (r)</label><input type="number" id="cfg-lora-r"></div>
+      <div class="form-group"><label data-i18n="settings.learningRate">Learning Rate</label><input type="text" id="cfg-lr"></div>
+      <div class="form-group"><label data-i18n="settings.batchSize">Batch Size</label><input type="number" id="cfg-batch"></div>
+      <div class="form-group"><label data-i18n="settings.epochs">Epochs</label><input type="number" id="cfg-epochs"></div>
+      <div class="form-group"><label data-i18n="settings.historyRatio">History Ratio</label><input type="text" id="cfg-history-ratio"></div>
+    </div>
+    <button class="btn btn-primary" onclick="saveSettings()" data-i18n="settings.save">Save Settings</button>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+</main>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+//  i18n — 中英文对照表
+// ═══════════════════════════════════════════════════════════════
+
+const LANG = {
+  'zh': {
+    'nav.overview':       '概览',
+    'nav.conversations':  '对话',
+    'nav.training':       '训练',
+    'nav.knowledge':      '知识',
+    'nav.settings':       '设置',
+    'overview.title':       '仪表盘',
+    'overview.proxyStatus': '代理状态',
+    'overview.todayConvs':  '今日对话',
+    'overview.trainedAdapters': '已训练适配器',
+    'overview.knowledgeFacts':  '知识事实',
+    'overview.latestTraining':  '最近训练',
+    'overview.trainingHistory': '训练历史',
+    'overview.scheduleLog':     '调度日志',
+    'overview.noTraining':  '暂无训练记录',
+    'overview.noData':      '暂无数据',
+    'overview.running':     '运行中',
+    'overview.stopped':     '已停止',
+    'overview.entries':     '条记录',
+    'overview.noDataText':  '暂无数据',
+    'overview.archived':    '条已归档',
+    'overview.mbStored':    'MB 已存储',
+    'overview.samples':     '条样本',
+    'table.date':    '日期',
+    'table.action':  '操作',
+    'table.status':  '状态',
+    'table.message': '信息',
+    'table.model':   '模型',
+    'table.samples': '样本数',
+    'table.duration':'耗时',
+    'conv.title':         '对话记录',
+    'conv.dates':         '日期',
+    'conv.selectDate':    '选择一个日期',
+    'conv.selectDateHint':'从左侧选择一个日期',
+    'conv.raw':           '原始',
+    'conv.dataset':       '数据集',
+    'conv.user':          '用户',
+    'conv.system':        '系统',
+    'conv.assistant':     '助手',
+    'conv.instruction':   '指令',
+    'conv.output':        '输出',
+    'conv.noRaw':         '无原始记录',
+    'conv.noDataset':     '无数据集记录',
+    'conv.errorLoad':     '加载失败',
+    'training.title':        '模型训练',
+    'training.runNow':       '立即执行夜间训练',
+    'training.dryRun':       '试运行',
+    'training.adapterHistory':'适配器历史',
+    'training.starting':     '正在启动夜间处理...',
+    'training.startingDry':  '正在启动试运行...',
+    'training.noHistory':    '暂无训练历史',
+    'training.completed':    '已完成',
+    'facts.title':      '知识事实',
+    'facts.extracted':  '提取的事实',
+    'facts.category':   '分类',
+    'facts.key':        '键',
+    'facts.value':      '值',
+    'facts.confidence': '置信度',
+    'facts.updated':    '更新时间',
+    'facts.none':       '暂无提取的事实',
+    'settings.title':       '设置',
+    'settings.model':       '模型',
+    'settings.baseModel':   '基础模型',
+    'settings.maxSeq':      '最大序列长度',
+    'settings.training':    '训练参数',
+    'settings.loraRank':    'LoRA 秩 (r)',
+    'settings.learningRate':'学习率',
+    'settings.batchSize':   '批次大小',
+    'settings.epochs':      '训练轮数',
+    'settings.historyRatio':'历史采样比例',
+    'settings.save':        '保存设置',
+    'settings.saved':       '设置已保存',
+    'settings.errorSave':   '保存失败',
+    'common.loading':  '加载中...',
+    'common.noConvs':  '暂无对话',
+    'toast.success':   '操作成功',
+    'toast.error':     '操作失败',
+    'toast.nightlyOk': '夜间处理已启动',
+    'toast.dryRunOk':  '试运行完成',
+  },
+  'en': {
+    'nav.overview':       'Overview',
+    'nav.conversations':  'Conversations',
+    'nav.training':       'Training',
+    'nav.knowledge':      'Knowledge',
+    'nav.settings':       'Settings',
+    'overview.title':       'Dashboard',
+    'overview.proxyStatus': 'Proxy Status',
+    'overview.todayConvs':  'Today Conversations',
+    'overview.trainedAdapters': 'Trained Adapters',
+    'overview.knowledgeFacts':  'Knowledge Facts',
+    'overview.latestTraining':  'Latest Training',
+    'overview.trainingHistory': 'Training History',
+    'overview.scheduleLog':     'Schedule Log',
+    'overview.noTraining':  'No training yet',
+    'overview.noData':      'No data yet',
+    'overview.running':     'Running',
+    'overview.stopped':     'Stopped',
+    'overview.entries':     ' entries',
+    'overview.noDataText':  'No data',
+    'overview.archived':    ' archived',
+    'overview.mbStored':    ' MB stored',
+    'overview.samples':     ' samples',
+    'table.date':    'Date',
+    'table.action':  'Action',
+    'table.status':  'Status',
+    'table.message': 'Message',
+    'table.model':   'Model',
+    'table.samples': 'Samples',
+    'table.duration':'Duration',
+    'conv.title':         'Conversations',
+    'conv.dates':         'Dates',
+    'conv.selectDate':    'Conversations — ',
+    'conv.selectDateHint':'Select a date from the left',
+    'conv.raw':           'Raw',
+    'conv.dataset':       'Dataset',
+    'conv.user':          'User',
+    'conv.system':        'System',
+    'conv.assistant':     'Assistant',
+    'conv.instruction':   'Instruction',
+    'conv.output':        'Output',
+    'conv.noRaw':         'No raw entries',
+    'conv.noDataset':     'No dataset entries',
+    'conv.errorLoad':     'Error loading',
+    'training.title':        'Training',
+    'training.runNow':       'Run Nightly Now',
+    'training.dryRun':       'Dry Run',
+    'training.adapterHistory':'Adapter History',
+    'training.starting':     'Starting nightly...',
+    'training.startingDry':  'Starting dry run...',
+    'training.noHistory':    'No training history',
+    'training.completed':    'completed',
+    'facts.title':      'Knowledge Facts',
+    'facts.extracted':  'Extracted Facts',
+    'facts.category':   'Category',
+    'facts.key':        'Key',
+    'facts.value':      'Value',
+    'facts.confidence': 'Confidence',
+    'facts.updated':    'Updated',
+    'facts.none':       'No facts extracted',
+    'settings.title':       'Settings',
+    'settings.model':       'Model',
+    'settings.baseModel':   'Base Model',
+    'settings.maxSeq':      'Max Sequence Length',
+    'settings.training':    'Training',
+    'settings.loraRank':    'LoRA Rank (r)',
+    'settings.learningRate':'Learning Rate',
+    'settings.batchSize':   'Batch Size',
+    'settings.epochs':      'Epochs',
+    'settings.historyRatio':'History Ratio',
+    'settings.save':        'Save Settings',
+    'settings.saved':       'Settings saved',
+    'settings.errorSave':   'Error saving',
+    'common.loading':  'Loading...',
+    'common.noConvs':  'No conversations',
+    'toast.success':   'Success',
+    'toast.error':     'Error',
+    'toast.nightlyOk': 'Nightly processing started',
+    'toast.dryRunOk':  'Dry run complete',
+  }
+};
+
+let lang = localStorage.getItem('agenttidal_lang') || 'zh';
+
+function t(key) {
+  return (LANG[lang] && LANG[lang][key]) || (LANG['en'][key]) || key;
+}
+
+function applyLang() {
+  // Update all data-i18n elements
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    const parts = key.split(']');
+    const attr = parts.length > 1 ? parts[0] : null;
+    const actualKey = parts.length > 1 ? parts[1] : key;
+    if (attr === '[value]') {
+      el.value = t(actualKey);
+      el.textContent = t(actualKey);
+    } else {
+      el.textContent = t(actualKey);
+    }
+  });
+  // Update lang toggle label
+  document.getElementById('lang-label').textContent = lang === 'zh' ? 'English' : '中文';
+  // Re-render dynamic content
+  if (stats) { renderOverview(); renderConvDates(); renderTraining(); renderFacts(); }
+  if (convData) renderConvView();
+}
+
+function toggleLang() {
+  lang = lang === 'zh' ? 'en' : 'zh';
+  localStorage.setItem('agenttidal_lang', lang);
+  applyLang();
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  Core logic
+// ═══════════════════════════════════════════════════════════════
+
+let stats = null;
+let convData = null;
+let convMode = 'raw';
+
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const p = document.getElementById('page-' + name);
+  if (p) p.classList.add('active');
+  const nav = document.querySelector(`.nav-item[data-page="${name}"]`);
+  if (nav) nav.classList.add('active');
+  if (name === 'overview' && stats) renderOverview();
+  if (name === 'facts' && stats) renderFacts();
+  if (name === 'training' && stats) renderTraining();
+}
+
+function escapeHtml(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function showToast(msg, type) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'toast ' + (type||'success') + ' show';
+  setTimeout(() => { t.className = 'toast'; }, 3000);
+}
+
+// ─── Fetch & Render ────────────────────────────────────────
+
+async function loadStats() {
+  try {
+    const r = await fetch('/api/stats');
+    stats = await r.json();
+    renderOverview();
+    renderConvDates();
+  } catch(e) { console.error('loadStats error:', e); }
+}
+
+function renderOverview() {
+  if (!stats) return;
+  const s = stats;
+  const running = s.proxy.running;
+  document.getElementById('proxy-status').innerHTML =
+    '<span class="status-dot ' + (running?'on':'off') + '"></span> ' + (running ? t('overview.running') : t('overview.stopped'));
+
+  const today = s.date;
+  const tf = s.short_term.find(f => f.date === today);
+  document.getElementById('today-convs').textContent = tf ? tf.entries : 0;
+  document.getElementById('today-entries').textContent = tf ? tf.entries + t('overview.entries') : t('overview.noDataText');
+
+  const lt = s.long_term;
+  document.getElementById('total-adapters').textContent = lt.total_adapters;
+  document.getElementById('total-convs').textContent = lt.total_conversations + t('overview.archived');
+  document.getElementById('total-facts').textContent = lt.total_facts;
+  document.getElementById('disk-usage').textContent = s.disk.total_mb + t('overview.mbStored');
+
+  // Latest training
+  const rt = document.getElementById('recent-training');
+  if (lt.latest_adapter) {
+    const a = lt.latest_adapter;
+    rt.innerHTML = '<div style="font-size:13px;line-height:1.8;"><strong>' + escapeHtml(a[1]||'') +
+      '</strong> &mdash; ' + t('overview.samples') + ': ' + (a[7]||0) + ' &middot; ' + (a[9]||0) + 's</div>';
+  } else {
+    rt.innerHTML = '<div class="empty">' + t('overview.noTraining') + '</div>';
+  }
+
+  // Chart
+  const cc = document.getElementById('chart-container');
+  if (lt.training_chart && lt.training_chart.labels.length) {
+    const ch = lt.training_chart;
+    const max = Math.max(...ch.samples, 1);
+    let bars = '';
+    ch.labels.forEach((l, i) => {
+      const h = Math.max(4, (ch.samples[i] / max) * 100);
+      bars += '<div class="chart-bar" style="height:' + h + 'px;" title="' + l + ': ' + ch.samples[i] + ' samples"></div>';
+    });
+    cc.innerHTML = '<div class="chart-placeholder">' + bars + '</div>' +
+      '<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text2);">' +
+      '<span>' + ch.labels[0] + '</span><span>' + ch.labels[ch.labels.length-1] + '</span></div>';
+  } else {
+    cc.innerHTML = '<div class="empty">' + t('overview.noData') + '</div>';
+  }
+
+  // Logs
+  const tb = document.getElementById('log-table');
+  if (lt.recent_logs && lt.recent_logs.length) {
+    tb.innerHTML = lt.recent_logs.map(l => {
+      const badge = l[3]==='success'?'success':l[3]==='failed'?'error':l[3]==='skipped'?'warning':'info';
+      return '<tr><td>' + escapeHtml(l[1]) + '</td><td>' + escapeHtml(l[2]) + '</td>' +
+        '<td><span class="badge ' + badge + '">' + escapeHtml(l[3]) + '</span></td><td>' + escapeHtml(l[4]||'') + '</td></tr>';
+    }).join('');
+  } else {
+    tb.innerHTML = '<tr><td colspan="4" class="empty">' + t('overview.noData') + '</td></tr>';
+  }
+}
+
+// ─── Conversations ─────────────────────────────────────────
+
+function renderConvDates() {
+  if (!stats) return;
+  const lt = stats.long_term;
+  const dates = new Set();
+  (lt.conversation_dates || []).forEach(d => dates.add(d));
+  stats.short_term.forEach(f => dates.add(f.date));
+  const sorted = [...dates].sort().reverse();
+  const el = document.getElementById('conv-dates-list');
+  if (!sorted.length) { el.innerHTML = '<div class="empty">' + t('common.noConvs') + '</div>'; return; }
+  el.innerHTML = sorted.map(d =>
+    '<div style="padding:8px 12px;cursor:pointer;border-radius:6px;font-size:13px;margin-bottom:2px;"' +
+    ' onmouseover="this.style.background=\'var(--surface2)\'"' +
+    ' onmouseout="this.style.background=\'transparent\'"' +
+    ' onclick="loadConvDate(\'' + d + '\')">' + d + '</div>'
+  ).join('');
+}
+
+async function loadConvDate(dateStr) {
+  document.getElementById('conv-viewer-title').textContent = t('conv.title') + ' — ' + dateStr;
+  document.getElementById('conv-viewer').innerHTML = '<div class="empty">' + t('common.loading') + '</div>';
+  try {
+    const r = await fetch('/api/conversations/' + dateStr);
+    convData = await r.json();
+    renderConvView();
+  } catch(e) {
+    document.getElementById('conv-viewer').innerHTML = '<div class="empty">' + t('conv.errorLoad') + '</div>';
+  }
+}
+
+function showConvView(mode) { convMode = mode; renderConvView(); }
+
+function renderConvView() {
+  const el = document.getElementById('conv-viewer');
+  if (!convData) return;
+  if (convMode === 'raw') {
+    const entries = convData.raw || [];
+    if (!entries.length) { el.innerHTML = '<div class="empty">' + t('conv.noRaw') + '</div>'; return; }
+    el.innerHTML = entries.map(e => {
+      const msgs = e.messages || [];
+      return msgs.map(m =>
+        '<div class="conv-message ' + m.role + '"><div class="role">' + (m.role==='user'?t('conv.user'):t('conv.system')) +
+        '</div><div class="content">' + escapeHtml(m.content||'') + '</div></div>'
+      ).join('') +
+      '<div class="conv-message assistant"><div class="role">' + t('conv.assistant') + ' (' + escapeHtml(e.model||'?') +
+      ')</div><div class="content">' + escapeHtml((e.response&&e.response.content)||'') + '</div></div><div style="height:8px;"></div>';
+    }).join('');
+  } else {
+    const entries = convData.dataset || [];
+    if (!entries.length) { el.innerHTML = '<div class="empty">' + t('conv.noDataset') + '</div>'; return; }
+    el.innerHTML = entries.map(e =>
+      '<div class="conv-message user"><div class="role">' + t('conv.instruction') + '</div><div class="content">' +
+      escapeHtml(e.instruction||'') + '</div></div>' +
+      '<div class="conv-message assistant"><div class="role">' + t('conv.output') + '</div><div class="content">' +
+      escapeHtml(e.output||'') + '</div></div>' +
+      (e.system ? '<div style="padding:4px 14px;font-size:11px;color:var(--text2);">System: ' + escapeHtml(e.system) + '</div>' : '') +
+      '<div style="height:8px;"></div>'
+    ).join('');
+  }
+}
+
+// ─── Training ──────────────────────────────────────────────
+
+async function triggerNightly() {
+  showToast(t('training.starting'), 'info');
+  const r = await fetch('/api/nightly/trigger', {method:'POST'});
+  const d = await r.json();
+  showToast(d.status==='success' ? t('toast.nightlyOk') : d.message, d.status==='success'?'success':'error');
+  setTimeout(loadStats, 2000);
+}
+
+async function triggerDryRun() {
+  showToast(t('training.startingDry'), 'info');
+  const r = await fetch('/api/nightly/dry-run', {method:'POST'});
+  const d = await r.json();
+  showToast(d.status==='success' ? t('toast.dryRunOk') : d.message, d.status==='success'?'success':'error');
+  setTimeout(loadStats, 2000);
+}
+
+function renderTraining() {
+  if (!stats) return;
+  const tb = document.getElementById('adapter-table');
+  const lt = stats.long_term;
+  if (lt.latest_adapter) {
+    tb.innerHTML =
+      '<tr><td>' + escapeHtml(lt.latest_adapter[1]||'') + '</td>' +
+      '<td>' + escapeHtml(lt.latest_adapter[3]||'') + '</td>' +
+      '<td>' + (lt.latest_adapter[7]||0) + '</td>' +
+      '<td>' + (lt.latest_adapter[9]||0) + 's</td>' +
+      '<td><span class="badge success">' + t('training.completed') + '</span></td></tr>';
+  } else {
+    tb.innerHTML = '<tr><td colspan="5" class="empty">' + t('training.noHistory') + '</td></tr>';
+  }
+}
+
+// ─── Facts ─────────────────────────────────────────────────
+
+function renderFacts() {
+  if (!stats) return;
+  const facts = stats.long_term.facts || [];
+  const tb = document.getElementById('facts-table');
+  if (!facts.length) {
+    tb.innerHTML = '<tr><td colspan="5" class="empty">' + t('facts.none') + '</td></tr>';
+    return;
+  }
+  tb.innerHTML = facts.map(f =>
+    '<tr><td><span class="badge info">' + escapeHtml(f[1]||'general') + '</span></td>' +
+    '<td><code>' + escapeHtml(f[2]) + '</code></td>' +
+    '<td>' + escapeHtml(f[3]) + '</td>' +
+    '<td>' + Math.round((f[4]||0)*100) + '%</td>' +
+    '<td style="font-size:11px;color:var(--text2);">' + escapeHtml(f[6]||'') + '</td></tr>'
+  ).join('');
+}
+
+// ─── Settings ──────────────────────────────────────────────
+
+async function loadSettings() {
+  try {
+    const r = await fetch('/api/config');
+    const cfg = await r.json();
+    document.getElementById('cfg-model-base').value = cfg.model?.base || '';
+    document.getElementById('cfg-model-seq').value = cfg.model?.max_seq_length || 2048;
+    document.getElementById('cfg-lora-r').value = cfg.train?.lora_r || 16;
+    document.getElementById('cfg-lr').value = cfg.train?.learning_rate || '2e-4';
+    document.getElementById('cfg-batch').value = cfg.train?.batch_size || 2;
+    document.getElementById('cfg-epochs').value = cfg.train?.num_epochs || 3;
+    document.getElementById('cfg-history-ratio').value = cfg.train?.history_sample_ratio || 0.2;
+  } catch(e) { console.error('loadSettings error:', e); }
+}
+
+async function saveSettings() {
+  const data = {
+    model: {
+      base: document.getElementById('cfg-model-base').value,
+      max_seq_length: parseInt(document.getElementById('cfg-model-seq').value),
+    },
+    train: {
+      lora_r: parseInt(document.getElementById('cfg-lora-r').value),
+      learning_rate: parseFloat(document.getElementById('cfg-lr').value),
+      batch_size: parseInt(document.getElementById('cfg-batch').value),
+      num_epochs: parseInt(document.getElementById('cfg-epochs').value),
+      history_sample_ratio: parseFloat(document.getElementById('cfg-history-ratio').value),
+    },
+  };
+  try {
+    await fetch('/api/config', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)});
+    showToast(t('settings.saved'), 'success');
+  } catch(e) { showToast(t('settings.errorSave'), 'error'); }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  Init
+// ═══════════════════════════════════════════════════════════════
+
+applyLang();
+loadStats();
+loadSettings();
+
+setInterval(() => {
+  const ov = document.getElementById('page-overview');
+  if (ov.classList.contains('active')) loadStats();
+}, 30000);
+</script>
+</body>
+</html>
