@@ -1,0 +1,47 @@
+# AgentTidal Configuration
+lm_studio:
+  base_url: "http://localhost:1234/v1"
+  api_key: ""
+
+proxy:
+  host: "127.0.0.1"
+  port: 1235
+  # The proxy forwards to lm_studio.base_url
+
+model:
+  base: "Qwen/Qwen3.5-4B"
+  download_dir: "models/base"
+  max_seq_length: 2048
+  load_in_4bit: true
+
+train:
+  lora_r: 16
+  lora_alpha: 32
+  lora_dropout: 0.05
+  target_modules: ["q_proj", "k_proj", "v_proj", "o_proj"]
+  batch_size: 2
+  gradient_accumulation_steps: 4
+  learning_rate: 2.0e-4
+  num_epochs: 3
+  max_steps: -1
+  warmup_steps: 10
+  logging_steps: 10
+  save_strategy: "steps"
+  save_steps: 50
+  # Anti-forgetting: sample history ratio (0.0 = none, 1.0 = all history)
+  history_sample_ratio: 0.2
+
+memory:
+  short_term_dir: "memory/short_term"
+  long_term_dir: "memory/long_term"
+  db_path: "memory/long_term/memory.db"
+  max_dataset_size: 5000
+
+cleaner:
+  min_turns: 2
+  min_message_length: 5
+  max_message_length: 4096
+
+scheduler:
+  enabled: true
+  time: "02:00"

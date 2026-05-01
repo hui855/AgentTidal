@@ -1,0 +1,26 @@
+[project]
+name = "agent-tidal"
+version = "0.1.0"
+description = "AI long-term memory system via nightly fine-tuning"
+requires-python = ">=3.11"
+dependencies = [
+    "openai>=1.0.0",
+    "httpx>=0.28.0",
+    "pyyaml>=6.0",
+    "uvicorn>=0.30.0",
+]
+
+[project.optional-dependencies]
+train = [
+    "torch>=2.4.0",
+    "transformers>=4.45.0",
+    "datasets>=3.0.0",
+    "accelerate>=1.0.0",
+    "peft>=0.13.0",
+    "trl>=0.11.0",
+    "bitsandbytes>=0.44.0",
+    "unsloth>=2024.11.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
